@@ -38,7 +38,7 @@ jobs:
             --stack-name serverless-user-api \
             --region eu-central-1 \
             --capabilities CAPABILITY_IAM \
-            --parameter-overrides JWT_SECRET=$JWT_SECRET
+            --parameter-overrides ParameterKey=JwtSecret,ParameterValue=$JWT_SECRET
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
