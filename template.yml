@@ -2,16 +2,22 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Serverless API with user registration, JWT auth, stats, WAF rate limiting, and email notification on deploy
 
+Parameters:
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: "Secret used to sign JWTs"
+
 Globals:
   Function:
     Timeout: 10
     Runtime: nodejs22.x
     MemorySize: 128
-    ReservedConcurrentExecutions: 1
+    ReservedConcurrentExecutions: 1  #I put this to limit the number of concurrent executions to 1 for rate limiting for cost concerns
     Environment:
       Variables:
         DYNAMODB_TABLE: UsersTable
-        JWT_SECRET: your_jwt_secret_here
+        JWT_SECRET: !Ref JwtSecret
 
 Resources:
 
