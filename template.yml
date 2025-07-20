@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Serverless API with user registration, JWT auth, stats, WAF rate limiting, and email notification on deploy
+Description: Serverless API with manual API Gateway configuration and API Key support
 
 Parameters:
   JwtSecret:
@@ -13,7 +13,6 @@ Globals:
     Timeout: 10
     Runtime: nodejs22.x
     MemorySize: 128
-    ReservedConcurrentExecutions: 1  #I put this to limit the number of concurrent executions to 1 for rate limiting for cost concerns
     Environment:
       Variables:
         DYNAMODB_TABLE: UsersTable
@@ -21,6 +20,9 @@ Globals:
 
 Resources:
 
+  ##############################
+  # DYNAMODB
+  ##############################
   UsersTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -28,20 +30,109 @@ Resources:
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
+        - AttributeName: email
+          AttributeType: S
       KeySchema:
         - AttributeName: id
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: EmailIndex
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
 
+  ##############################
+  # API GATEWAY - FULL MANUAL
+  ##############################
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: MyApi
+      StageName: Prod
+
+  StatsResource:
+    Type: AWS::ApiGateway::Resource
+    DependsOn: MyApi
+    Properties:
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: stats
+      RestApiId: !Ref MyApi
+
+  StatsApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref StatsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${StatsFunction.Arn}/invocations
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: StatsApiMethod
+    Properties:
+      RestApiId: !Ref MyApi
+      Description: Initial deployment
+      StageName: Prod
+
+  ##############################
+  # API KEY + USAGE PLAN
+  ##############################
+  StatsApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Name: StatsAPIKey
+      Enabled: true
+      StageKeys:
+        - RestApiId: !Ref MyApi
+          StageName: Prod
+
+  StatsUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Properties:
+      UsagePlanName: StatsUsagePlan
+      ApiStages:
+        - ApiId: !Ref MyApi
+          Stage: Prod
+      Throttle:
+        RateLimit: 1
+        BurstLimit: 1
+      Quota:
+        Limit: 1000
+        Period: MONTH
+
+  StatsUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref StatsApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref StatsUsagePlan
+
+  ##############################
+  # LAMBDAS
+  ##############################
   RegisterFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: register.handler
+      Handler: handlers/register.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:PutItem
+              Resource: !GetAtt UsersTable.Arn
       Events:
         RegisterApi:
           Type: Api
           Properties:
+            RestApiId: !Ref MyApi
             Path: /register
             Method: post
 
@@ -49,56 +140,80 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: login.handler
+      Handler: handlers/login.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+              Resource:
+                - !GetAtt UsersTable.Arn
+                - !Sub "${UsersTable.Arn}/index/EmailIndex"
       Events:
         LoginApi:
           Type: Api
           Properties:
+            RestApiId: !Ref MyApi
             Path: /login
             Method: post
-
-  AuthorizerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: src/
-      Handler: auth.handler
 
   MeFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: me.handler
+      Handler: handlers/me.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:GetItem
+              Resource: !GetAtt UsersTable.Arn
       Events:
         MeApi:
           Type: Api
           Properties:
+            RestApiId: !Ref MyApi
             Path: /me
             Method: get
             Auth:
-              Authorizer: LambdaAuthorizer
+              Authorizer: LambdaRequestAuthorizer
 
   StatsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: stats.handler
+      Handler: handlers/stats.handler
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: dynamodb:Scan
+              Resource: !GetAtt UsersTable.Arn
       Events:
         StatsApi:
           Type: Api
           Properties:
             Path: /stats
             Method: get
+            RestApiId: !Ref MyApi
+            ApiKeyRequired: true
 
-  LambdaAuthorizer:
-    Type: AWS::ApiGateway::Authorizer
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      Name: JWTAuthorizer
-      Type: TOKEN
-      IdentitySource: method.request.header.Authorization
-      RestApiId:
-        Ref: ServerlessRestApi
-      AuthorizerUri:
-        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerFunction.Arn}/invocations
+      CodeUri: src/
+      Handler: utils/auth.handler
+
+  ##############################
+  # LAMBDA PERMISSIONS
+  ##############################
+  PermissionForStatsInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref StatsFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/GET/stats
 
   PermissionForAuthorizerInvoke:
     Type: AWS::Lambda::Permission
@@ -106,24 +221,18 @@ Resources:
       FunctionName: !GetAtt AuthorizerFunction.Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServerlessRestApi}/*/*/me
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/GET/me
 
-# Uncomment below for deploy notification via SES (requires verified sender/domain)
-#   DeployNotification:
-#     Type: AWS::SNS::Topic
-#     Properties:
-#       Subscription:
-#         - Protocol: email
-#           Endpoint: your-email@example.com
-#       TopicName: DeployNotificationTopic
-
+  ##############################
+  # BILLING ALARM
+  ##############################
   BillingAlarmSNSTopic:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: BillingAlarmTopic
       Subscription:
         - Protocol: email
-          Endpoint: onurbozova@gmail.com  # <- Buraya kendi e-posta adresini yaz
+          Endpoint: onurbozova@gmail.com
 
   BillingAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -135,9 +244,9 @@ Resources:
         - Name: Currency
           Value: USD
       Statistic: Maximum
-      Period: 21600             # 6 saat
+      Period: 21600
       EvaluationPeriods: 1
-      Threshold: 5              # 5 USD üzeri harcama
+      Threshold: 5
       ComparisonOperator: GreaterThanThreshold
       AlarmActions:
         - Ref: BillingAlarmSNSTopic
@@ -146,4 +255,4 @@ Resources:
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"

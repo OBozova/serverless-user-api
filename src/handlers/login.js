@@ -11,20 +11,26 @@ exports.handler = async (event) => {
 
   const params = {
     TableName: table,
-    Key: { email },
+    IndexName: 'EmailIndex',
+    KeyConditionExpression: "email = :email",
+    ExpressionAttributeValues: {
+      ":email": email
+    }
   };
 
-  const result = await dynamo.get(params).promise();
-  const user = result.Item;
+  const result = await dynamo.query(params).promise();
+  if (result.Items && result.Items.length > 0) {
+    const user = result.Items[0];
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+    }
+    const token = jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' });
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Unauthorized' }) };
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ token }),
+    };
+  } else {
+    return { statusCode: 404, body: JSON.stringify({ error: 'User Not Found' }) };
   }
-
-  const token = jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' });
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ token }),
-  };
 };

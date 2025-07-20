@@ -4,7 +4,7 @@
   "description": "A serverless API for user registration and authentication",
   "main": "handler.js",
   "dependencies": {
-    "aws-sdk": "^2.1000.0",
+    "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^9.0.0"
