@@ -1,0 +1,21 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+
+# Environment variables
+.env
+.env.*
+
+# VSCode settings
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Coverage directory
+coverage/
+
+# Build output
+dist/
+build/

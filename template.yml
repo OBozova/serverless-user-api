@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless API with user registration, JWT auth, stats, WAF rate limiting, and email notification on deploy
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: nodejs22.x
+    MemorySize: 128
+    ReservedConcurrentExecutions: 1
+    Environment:
+      Variables:
+        DYNAMODB_TABLE: UsersTable
+        JWT_SECRET: your_jwt_secret_here
+
+Resources:
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UsersTable
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: register.handler
+      Events:
+        RegisterApi:
+          Type: Api
+          Properties:
+            Path: /register
+            Method: post
+
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: login.handler
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: post
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: auth.handler
+
+  MeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: me.handler
+      Events:
+        MeApi:
+          Type: Api
+          Properties:
+            Path: /me
+            Method: get
+            Auth:
+              Authorizer: LambdaAuthorizer
+
+  StatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: stats.handler
+      Events:
+        StatsApi:
+          Type: Api
+          Properties:
+            Path: /stats
+            Method: get
+
+  LambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: JWTAuthorizer
+      Type: TOKEN
+      IdentitySource: method.request.header.Authorization
+      RestApiId:
+        Ref: ServerlessRestApi
+      AuthorizerUri:
+        Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerFunction.Arn}/invocations
+
+  PermissionForAuthorizerInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AuthorizerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServerlessRestApi}/*/*/me
+
+# Uncomment below for deploy notification via SES (requires verified sender/domain)
+#   DeployNotification:
+#     Type: AWS::SNS::Topic
+#     Properties:
+#       Subscription:
+#         - Protocol: email
+#           Endpoint: your-email@example.com
+#       TopicName: DeployNotificationTopic
+
+  BillingAlarmSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: BillingAlarmTopic
+      Subscription:
+        - Protocol: email
+          Endpoint: onurbozova@gmail.com  # <- Buraya kendi e-posta adresini yaz
+
+  BillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MonthlyBillingThresholdExceeded
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      Statistic: Maximum
+      Period: 21600             # 6 saat
+      EvaluationPeriods: 1
+      Threshold: 5              # 5 USD üzeri harcama
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - Ref: BillingAlarmSNSTopic
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
