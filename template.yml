@@ -45,36 +45,92 @@ Resources:
             ProjectionType: ALL
 
   ##############################
-  # API GATEWAY - FULL MANUAL
+  # API GATEWAY - MANUAL
   ##############################
-  MyApi:
-    Type: AWS::Serverless::Api
+  MyRestApi:
+    Type: AWS::ApiGateway::RestApi
     Properties:
       Name: MyApi
+  
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
       StageName: Prod
-      Auth:
-        Authorizers:
-          LambdaRequestAuthorizer:
-            FunctionArn: !GetAtt AuthorizerFunction.Arn
+      DeploymentId: !Ref MyDeployment
+      RestApiId: !Ref MyRestApi
+      Description: version 1.0.0
+
+  MeResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyRestApi.RootResourceId
+      PathPart: me
+      RestApiId: !Ref MyRestApi
+
+  RegisterResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyRestApi.RootResourceId
+      PathPart: register
+      RestApiId: !Ref MyRestApi
+
+  LoginResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyRestApi.RootResourceId
+      PathPart: login
+      RestApiId: !Ref MyRestApi
+
+  StatsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyRestApi.RootResourceId
+      PathPart: stats
+      RestApiId: !Ref MyRestApi
+
+  MyRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ResourceId: !GetAtt MyRestApi.RootResourceId
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - StatusCode: 200
+
+  MyDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - RegisterMethod
+      - LoginMethod
+      - MeMethod
+      - StatsMethod
+    Properties:
+      RestApiId: !Ref MyRestApi
+      Description: v1.0.0
 
   ##############################
-  # API KEY + USAGE PLAN
+  # USAGE PLAN + API KEY
   ##############################
   StatsApiKey:
     Type: AWS::ApiGateway::ApiKey
     Properties:
       Name: StatsAPIKey
       Enabled: true
-      StageKeys:
-        - RestApiId: !Ref MyApi
-          StageName: Prod
 
   StatsUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiStage
     Properties:
       UsagePlanName: StatsUsagePlan
       ApiStages:
-        - ApiId: !Ref MyApi
+        - ApiId: !Ref MyRestApi
           Stage: Prod
       Throttle:
         RateLimit: 1
@@ -91,7 +147,27 @@ Resources:
       UsagePlanId: !Ref StatsUsagePlan
 
   ##############################
-  # LAMBDAS
+  # AUTHORIZER FUNCTION
+  ##############################
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: utils/auth.handler
+
+  LambdaAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      Name: LambdaRequestAuthorizer
+      RestApiId: !Ref MyRestApi
+      Type: REQUEST
+      AuthorizerUri: !Sub
+        - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Arn}/invocations
+        - { Arn: !GetAtt AuthorizerFunction.Arn }
+      IdentitySource: method.request.header.Authorization
+
+  ##############################
+  # LAMBDA FUNCTIONS
   ##############################
   RegisterFunction:
     Type: AWS::Serverless::Function
@@ -101,15 +177,29 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: dynamodb:PutItem
-              Resource: !GetAtt UsersTable.Arn
-      Events:
-        RegisterApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref MyApi
-            Path: /register
-            Method: post
+              Action: 
+                - dynamodb:PutItem
+                - dynamodb:Query
+              Resource: 
+                - !GetAtt UsersTable.Arn
+                - !Sub "${UsersTable.Arn}/index/EmailIndex"
+
+  RegisterMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ResourceId: !Ref RegisterResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      RequestValidatorId: !Ref BodyValidator
+      RequestModels:
+        application/json: !Ref RegisterModel
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt RegisterFunction.Arn }
 
   LoginFunction:
     Type: AWS::Serverless::Function
@@ -125,13 +215,23 @@ Resources:
               Resource:
                 - !GetAtt UsersTable.Arn
                 - !Sub "${UsersTable.Arn}/index/EmailIndex"
-      Events:
-        LoginApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref MyApi
-            Path: /login
-            Method: post
+
+  LoginMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ResourceId: !Ref LoginResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      RequestValidatorId: !Ref BodyValidator
+      RequestModels:
+        application/json: !Ref LoginModel
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt LoginFunction.Arn }
 
   MeFunction:
     Type: AWS::Serverless::Function
@@ -143,15 +243,21 @@ Resources:
             - Effect: Allow
               Action: dynamodb:GetItem
               Resource: !GetAtt UsersTable.Arn
-      Events:
-        MeApi:
-          Type: Api
-          Properties:
-            RestApiId: !Ref MyApi
-            Path: /me
-            Method: get
-            Auth:
-              Authorizer: LambdaRequestAuthorizer
+
+  MeMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ResourceId: !Ref MeResource
+      HttpMethod: GET
+      AuthorizationType: CUSTOM
+      AuthorizerId: !Ref LambdaAuthorizer
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt MeFunction.Arn }
 
   StatsFunction:
     Type: AWS::Serverless::Function
@@ -159,44 +265,121 @@ Resources:
       CodeUri: src/
       Handler: handlers/stats.handler
       Policies:
-        - Version: "2012-10-17"
-          Statement:
+        - Statement:
             - Effect: Allow
               Action: dynamodb:Scan
               Resource: !GetAtt UsersTable.Arn
-      Events:
-        StatsApi:
-          Type: Api
-          Properties:
-            Path: /stats
-            Method: get
-            RestApiId: !Ref MyApi
-            ApiKeyRequired: true
 
-  AuthorizerFunction:
-    Type: AWS::Serverless::Function
+  StatsMethod:
+    Type: AWS::ApiGateway::Method
     Properties:
-      CodeUri: src/
-      Handler: utils/auth.handler
+      RestApiId: !Ref MyRestApi
+      ResourceId: !Ref StatsResource
+      HttpMethod: GET
+      ApiKeyRequired: true
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub
+          - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations
+          - { LambdaArn: !GetAtt StatsFunction.Arn }
 
   ##############################
-  # LAMBDA PERMISSIONS
+  # VALIDATION
   ##############################
-  PermissionForStatsInvoke:
+  BodyValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      RestApiId: !Ref MyRestApi
+      Name: ValidateBody
+      ValidateRequestBody: true
+      ValidateRequestParameters: false
+
+  LoginModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ContentType: application/json
+      Name: LoginModel
+      Schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+          password:
+            type: string
+            minLength: 6
+
+  RegisterModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref MyRestApi
+      ContentType: application/json
+      Name: RegisterModel
+      Schema:
+        type: object
+        required:
+          - email
+          - password
+        properties:
+          email:
+            type: string
+            pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+          password:
+            type: string
+            minLength: 6
+          firstname:
+            type: string
+          lastname:
+            type: string
+
+  ##############################
+  # PERMISSIONS
+  ##############################
+  LambdaInvokePermissions:
     Type: AWS::Lambda::Permission
     Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref AuthorizerFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/GET/*
+
+  RegisterInvokePermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref RegisterFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/POST/register
+
+  LoginInvokePermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LoginFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/POST/login
+
+  MeInvokePermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/GET/me
+
+  StatsInvokePermissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
       FunctionName: !Ref StatsFunction
-      Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/GET/stats
-
-  PermissionForAuthorizerInvoke:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt AuthorizerFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/GET/me
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/GET/stats
 
   ##############################
   # BILLING ALARM
@@ -230,4 +413,4 @@ Resources:
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint
-    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+    Value: !Sub "https://${MyRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"

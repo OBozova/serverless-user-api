@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "handlers/register.handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["RegisterFunction", "LoginFunction", "MeFunction", "StatsFunction", "AuthorizerFunction"]
+functions = ["AuthorizerFunction", "RegisterFunction", "LoginFunction", "MeFunction", "StatsFunction"]
 
 [layer_build_definitions]
