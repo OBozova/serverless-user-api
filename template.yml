@@ -52,35 +52,10 @@ Resources:
     Properties:
       Name: MyApi
       StageName: Prod
-
-  StatsResource:
-    Type: AWS::ApiGateway::Resource
-    DependsOn: MyApi
-    Properties:
-      ParentId: !GetAtt MyApi.RootResourceId
-      PathPart: stats
-      RestApiId: !Ref MyApi
-
-  StatsApiMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref MyApi
-      ResourceId: !Ref StatsResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      Integration:
-        IntegrationHttpMethod: POST
-        Type: AWS_PROXY
-        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${StatsFunction.Arn}/invocations
-
-  ApiDeployment:
-    Type: AWS::ApiGateway::Deployment
-    DependsOn: StatsApiMethod
-    Properties:
-      RestApiId: !Ref MyApi
-      Description: Initial deployment
-      StageName: Prod
+      Auth:
+        Authorizers:
+          LambdaRequestAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
 
   ##############################
   # API KEY + USAGE PLAN
