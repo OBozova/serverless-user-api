@@ -25,7 +25,7 @@ jobs:
           use-installer: true
 
       - name: Install dependencies
-        run: npm install
+        run: cd src && npm install && cd ..
 
       - name: Build with SAM
         run: sam build
