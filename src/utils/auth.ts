@@ -1,4 +1,4 @@
-import { APIGatewayRequestAuthorizerEvent, APIGatewayAuthorizerResult } from 'aws-lambda';
+import { CustomAuthorizerEvent, CustomAuthorizerResult   } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
 const secret = process.env.JWT_SECRET!;
@@ -12,40 +12,50 @@ interface DecodedToken {
   exp?: number;
 }
 
-interface AuthorizerResponse {
-  isAuthorized: boolean;
-  context?: {
-    userId: string;
-    email: string;
-    name: string;
-  };
-}
-
-export const handler = async (event: APIGatewayRequestAuthorizerEvent): Promise<AuthorizerResponse> => {
+export const handler = async (event: CustomAuthorizerEvent): Promise<CustomAuthorizerResult> => {
   try {
-    const token = event.headers?.authorization?.split(' ')[1] || 
-                  event.headers?.Authorization?.split(' ')[1];
+    const token = event.authorizationToken?.split(' ')[1]; // Bearer <token>
 
-    if (!token) {
-      return {
-        isAuthorized: false
-      };
-    }
+    if (!token) throw new Error('No token provided');
 
     const decoded = jwt.verify(token, secret) as DecodedToken;
-    
+
+    const userId = decoded.sub || decoded.id || 'unknown-user';
+
     return {
-      isAuthorized: true,
+      principalId: userId,
+      policyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Action: 'execute-api:Invoke',
+            Effect: 'Allow',
+            Resource: event.methodArn
+          }
+        ]
+      },
       context: {
-        userId: decoded.sub || decoded.id || '',
+        userId,
         email: decoded.email || '',
         name: decoded.name || ''
       }
     };
   } catch (err) {
-    console.error('JWT verification error:', err);
+    console.error('JWT verification failed:', err);
+
+    // Return a Deny policy
     return {
-      isAuthorized: false
+      principalId: 'unauthorized',
+      policyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Action: 'execute-api:Invoke',
+            Effect: 'Deny',
+            Resource: event.methodArn
+          }
+        ]
+      }
     };
   }
 };
