@@ -26,7 +26,7 @@ jobs:
           use-installer: true
 
       - name: Install dependencies
-        run: cd src && npm install --omit=dev && cd ..
+        run: cd src && npm install && cd ..
 
       - name: Install rimraf globally
         run: npm install -g rimraf
