@@ -1,10 +1,12 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import { User, UserRegistration, UserProfile, ErrorResponse, ApiResponse } from '../types';
+import { User, UserRegistration, UserProfile, ErrorResponse } from '../types';
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client);
 const table = process.env.DYNAMODB_TABLE!;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
@@ -25,16 +27,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    const queryParams: AWS.DynamoDB.DocumentClient.QueryInput = {
+    const queryParams = new QueryCommand({
       TableName: table,
       IndexName: 'EmailIndex',
       KeyConditionExpression: "email = :email",
       ExpressionAttributeValues: {
         ":email": email
       }
-    };
+    });
 
-    const result = await dynamo.query(queryParams).promise();
+    const result = await dynamo.send(queryParams);
     
     if (result.Items && result.Items.length > 0) {
       return { 
@@ -54,12 +56,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       lastname
     };
 
-    const params: AWS.DynamoDB.DocumentClient.PutItemInput = {
+    const params = new PutCommand({
       TableName: table,
       Item: user,
-    };
+    });
 
-    await dynamo.put(params).promise();
+    await dynamo.send(params);
 
     const userProfile: UserProfile = { id, email, firstname, lastname };
 

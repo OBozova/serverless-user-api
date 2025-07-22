@@ -15,6 +15,12 @@ fi
 echo "Compiling TypeScript..."
 npm run build
 
+# Copy dependencies to dist for deployment
+echo "Copying dependencies to dist..."
+cp package.json dist/
+cp -r node_modules dist/
+
 echo "Build completed successfully!"
 echo "Compiled JavaScript files are in src/dist/"
+echo "Dependencies copied to src/dist/node_modules/"
 echo "Ready for SAM deployment!"

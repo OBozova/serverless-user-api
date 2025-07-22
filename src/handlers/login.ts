@@ -1,10 +1,12 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { User, UserLogin, LoginResponse, ErrorResponse } from '../types';
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client);
 const table = process.env.DYNAMODB_TABLE!;
 const secret = process.env.JWT_SECRET!;
 
@@ -26,16 +28,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       };
     }
 
-    const params: AWS.DynamoDB.DocumentClient.QueryInput = {
+    const params = new QueryCommand({
       TableName: table,
       IndexName: 'EmailIndex',
       KeyConditionExpression: "email = :email",
       ExpressionAttributeValues: {
         ":email": email
       }
-    };
+    });
 
-    const result = await dynamo.query(params).promise();
+    const result = await dynamo.send(params);
     
     if (result.Items && result.Items.length > 0) {
       const user = result.Items[0] as User;

@@ -1,8 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { User, UserProfile, ErrorResponse } from '../types';
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client);
 const table = process.env.DYNAMODB_TABLE!;
 
 interface AuthorizedEvent extends APIGatewayProxyEvent {
@@ -26,12 +28,12 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
       };
     }
 
-    const params: AWS.DynamoDB.DocumentClient.GetItemInput = {
+    const params = new GetCommand({
       TableName: table,
       Key: { id },
-    };
+    });
 
-    const result = await dynamo.get(params).promise();
+    const result = await dynamo.send(params);
     const user = result.Item as User | undefined;
 
     if (!user) {

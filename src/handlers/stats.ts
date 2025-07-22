@@ -1,17 +1,19 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import * as AWS from 'aws-sdk';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { StatsResponse, ErrorResponse } from '../types';
 
-const dynamo = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const dynamo = DynamoDBDocumentClient.from(client);
 const table = process.env.DYNAMODB_TABLE!;
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
-    const scanParams: AWS.DynamoDB.DocumentClient.ScanInput = { 
+    const scanParams = new ScanCommand({
       TableName: table 
-    };
+    });
 
-    const scan = await dynamo.scan(scanParams).promise();
+    const scan = await dynamo.send(scanParams);
     
     const statsResponse: StatsResponse = { 
       userCount: scan.Count || 0 
