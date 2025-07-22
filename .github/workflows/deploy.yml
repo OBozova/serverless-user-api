@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - cursor/migrate-repository-to-typescript-a311
+      - typescript-migration
 
 jobs:
   deploy:
