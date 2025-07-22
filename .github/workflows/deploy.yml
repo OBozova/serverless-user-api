@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install --omit=dev && cd ..
 
+      - name: Install rimraf globally
+        run: npm install -g rimraf
+
       - name: Build TypeScript
         run: cd src && npm run build && cd ..
 
