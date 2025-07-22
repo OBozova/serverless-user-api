@@ -153,7 +153,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: utils/auth.handler
+      Handler: dist/utils/auth.handler
 
   LambdaAuthorizer:
     Type: AWS::ApiGateway::Authorizer
@@ -173,7 +173,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: handlers/register.handler
+      Handler: dist/handlers/register.handler
       Policies:
         - Statement:
             - Effect: Allow
@@ -205,7 +205,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: handlers/login.handler
+      Handler: dist/handlers/login.handler
       Policies:
         - Statement:
             - Effect: Allow
@@ -237,7 +237,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: handlers/me.handler
+      Handler: dist/handlers/me.handler
       Policies:
         - Statement:
             - Effect: Allow
@@ -263,7 +263,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/
-      Handler: handlers/stats.handler
+      Handler: dist/handlers/stats.handler
       Policies:
         - Statement:
             - Effect: Allow

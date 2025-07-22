@@ -3,10 +3,24 @@
   "version": "1.0.0",
   "description": "A serverless API for user registration and authentication",
   "main": "handler.js",
+  "scripts": {
+    "build": "tsc",
+    "prebuild": "rimraf dist",
+    "dev": "tsc --watch"
+  },
   "dependencies": {
     "aws-sdk": "^2.1692.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.11.16",
+    "@types/uuid": "^9.0.8",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3"
   }
 }

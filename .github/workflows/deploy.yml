@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: cd src && npm install && cd ..
 
+      - name: Build TypeScript
+        run: cd src && npm run build && cd ..
+
       - name: Build with SAM
         run: sam build
 
