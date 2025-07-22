@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - typscript-migration # typo while creating the branch, should be fixed later
 
 jobs:
   deploy:
