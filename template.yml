@@ -56,7 +56,7 @@ Resources:
     Type: AWS::ApiGateway::Stage
     Properties:
       StageName: Prod
-      DeploymentId: !Ref MyDeployment
+      DeploymentId: !Ref MyDeploymentV2
       RestApiId: !Ref MyRestApi
       Description: version 1.0.0
 
@@ -104,7 +104,7 @@ Resources:
       MethodResponses:
         - StatusCode: 200
 
-  MyDeployment:
+  MyDeploymentV2:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - RegisterMethod
@@ -152,7 +152,7 @@ Resources:
   AuthorizerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: src/dist
       Handler: utils/auth.handler
 
   LambdaAuthorizer:
@@ -172,7 +172,7 @@ Resources:
   RegisterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: src/dist
       Handler: handlers/register.handler
       Policies:
         - Statement:
@@ -204,7 +204,7 @@ Resources:
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: src/dist
       Handler: handlers/login.handler
       Policies:
         - Statement:
@@ -236,7 +236,7 @@ Resources:
   MeFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: src/dist
       Handler: handlers/me.handler
       Policies:
         - Statement:
@@ -262,7 +262,7 @@ Resources:
   StatsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: src/dist
       Handler: handlers/stats.handler
       Policies:
         - Statement:
@@ -347,7 +347,7 @@ Resources:
       Action: lambda:InvokeFunction
       FunctionName: !Ref AuthorizerFunction
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/GET/*
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/authorizers/*
 
   RegisterInvokePermissions:
     Type: AWS::Lambda::Permission
@@ -369,9 +369,9 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref MeFunction
+      FunctionName: !GetAtt MeFunction.Arn
       Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/Prod/GET/me
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyRestApi}/*/*/*
 
   StatsInvokePermissions:
     Type: AWS::Lambda::Permission
