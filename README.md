@@ -12,7 +12,7 @@ This is a serverless API built using AWS Lambda, API Gateway, and DynamoDB, writ
 ## Development
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22
 - npm
 - AWS SAM CLI
 
