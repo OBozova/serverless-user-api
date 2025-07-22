@@ -34,6 +34,12 @@ jobs:
       - name: Build TypeScript
         run: cd src && npm run build && cd ..
 
+      - name: Copying dependencies to dist
+        run: |
+          mkdir -p src/dist/node_modules
+          cp -r src/node_modules/* src/dist/node_modules/
+          cp -r src/package.json src/dist/package.json
+
       - name: Build with SAM
         run: sam build
 
