@@ -1,4 +1,4 @@
-import { CustomAuthorizerEvent, CustomAuthorizerResult   } from 'aws-lambda';
+import { APIGatewayRequestAuthorizerEvent, CustomAuthorizerResult   } from 'aws-lambda';
 import * as jwt from 'jsonwebtoken';
 
 const secret = process.env.JWT_SECRET!;
@@ -12,9 +12,9 @@ interface DecodedToken {
   exp?: number;
 }
 
-export const handler = async (event: CustomAuthorizerEvent): Promise<CustomAuthorizerResult> => {
+export const handler = async (event: APIGatewayRequestAuthorizerEvent): Promise<CustomAuthorizerResult> => {
   try {
-    const token = event.authorizationToken?.split(' ')[1]; // Bearer <token>
+    const token = event.headers?.Authorization?.split(' ')[1]; // Bearer <token>
 
     if (!token) throw new Error('No token provided');
 
