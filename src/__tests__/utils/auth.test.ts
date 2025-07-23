@@ -83,8 +83,4 @@ describe('auth.handler', () => {
     expect(result.principalId).toBe('unknown-user');
     expect(result.context?.userId).toBe('unknown-user');
   });
-
-  it('failing test', () => {
-    expect(true).toBe(false); // This is a failing test to demonstrate the test structure
-  })
 });
