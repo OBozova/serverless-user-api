@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { StatsResponse, ErrorResponse } from '../types';
+import { createResponse } from '../utils/createResponse';
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -19,15 +20,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       userCount: scan.Count || 0 
     };
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify(statsResponse),
-    };
+    return createResponse(200, statsResponse);
   } catch (error) {
     console.error('Stats error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' } as ErrorResponse),
-    };
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse);
   }
 };

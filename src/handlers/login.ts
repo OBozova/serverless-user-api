@@ -4,6 +4,7 @@ import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { User, UserLogin, LoginResponse, ErrorResponse } from '../types';
+import { createResponse } from '../utils/createResponse';
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -13,19 +14,13 @@ const secret = process.env.JWT_SECRET!;
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     if (!event.body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Request body is required' } as ErrorResponse),
-      };
+      return createResponse(400, { error: 'Request body is required' } as ErrorResponse);
     }
 
     const { email, password }: UserLogin = JSON.parse(event.body);
 
     if (!email || !password) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Email and password are required' } as ErrorResponse),
-      };
+      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse);
     }
 
     const params = new QueryCommand({
@@ -43,18 +38,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const user = result.Items[0] as User;
       
       if (!user || !(await bcrypt.compare(password, user.password))) {
-        return { 
-          statusCode: 401, 
-          body: JSON.stringify({ error: 'Unauthorized' } as ErrorResponse) 
-        };
+        return createResponse(401, { error: 'Unauthorized' } as ErrorResponse);
       }
       
       const token = jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' });
 
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ token } as LoginResponse),
-      };
+      return createResponse(200,{ token } as LoginResponse);
     } else {
       return { 
         statusCode: 404, 
@@ -63,9 +52,6 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
   } catch (error) {
     console.error('Login error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' } as ErrorResponse),
-    };
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse);
   }
 };
