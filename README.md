@@ -66,6 +66,15 @@ npm run dev
 - Whenever code pushed on main it will deploy automatically
 - Make sure to run the build process before deployment
 
+## Local Deploy(Without pipeline)
+- Run following commands in order
+- cd src && npm i && cd ..
+- sh build.sh
+- sam build
+- After running those get access key from AWS Console(from IAM) and set environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+- After setting environment variables 'run sam deploy --guided' or you can basicly run 'sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name serverless-user-api --region eu-central-1 --capabilities CAPABILITY_IAM --resolve-s3 --parameter-overrides ParameterKey=JwtSecret,ParameterValue=$$$' instead of $$$ you should use your secret
+- When deployment finished look into API Gateway from console and take its url and you can use it on your own account
+
 ## Notes
 
 - **TypeScript**: All source code is written in TypeScript with strict type checking enabled
