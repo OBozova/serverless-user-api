@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - front-end
 
 jobs:
   deploy:
