@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - adding-tests
 
 jobs:
   deploy:
@@ -26,6 +27,9 @@ jobs:
 
       - name: Install dependencies
         run: cd src && npm install && cd ..
+
+      - name: Run tests
+        run: cd src && npm test && cd ..
 
       - name: Install rimraf globally
         run: npm install -g rimraf
