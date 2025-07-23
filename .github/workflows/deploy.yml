@@ -29,7 +29,7 @@ jobs:
         run: cd src && npm install && cd ..
 
       - name: Run tests
-        run: cd src && npm test && cd ..
+        run: cd install && npm test
 
       - name: Install rimraf globally
         run: npm install -g rimraf
