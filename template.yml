@@ -57,7 +57,7 @@ Resources:
     Type: AWS::ApiGateway::Stage
     Properties:
       StageName: Prod
-      DeploymentId: !Ref MyDeploymentV3
+      DeploymentId: !Ref MyDeploymentV4
       RestApiId: !Ref MyRestApi
       Description: version 1.0.0
 
@@ -89,7 +89,7 @@ Resources:
       PathPart: stats
       RestApiId: !Ref MyRestApi
 
-  MyDeploymentV3:
+  MyDeploymentV4:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - RegisterMethod

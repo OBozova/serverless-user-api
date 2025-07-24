@@ -75,6 +75,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Set .env variables for frontend
+        working-directory: frontend
+        run: |
+          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
+          echo "VITE_OTHER_SECRET=${{ secrets.VITE_OTHER_SECRET }}" >> .env
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
