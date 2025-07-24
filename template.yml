@@ -17,6 +17,7 @@ Globals:
       Variables:
         DYNAMODB_TABLE: UsersTable
         JWT_SECRET: !Ref JwtSecret
+        S3_BUCKET: !Ref FrontendBucket
 
 Resources:
 

@@ -23,7 +23,7 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
     const { userId: id } = event.requestContext.authorizer;
 
     if (!id) {
-      return createResponse(401, { error: 'Unauthorized' } as ErrorResponse);
+      return createResponse(401, { error: 'Unauthorized' } as ErrorResponse, event.headers?.Origin);
     }
 
     const params = new GetCommand({
@@ -35,7 +35,7 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
     const user = result.Item as User | undefined;
 
     if (!user) {
-      return createResponse(404, { error: 'User not found' } as ErrorResponse);
+      return createResponse(404, { error: 'User not found' } as ErrorResponse, event.headers?.Origin);
     }
 
     // Return user profile without password
@@ -46,9 +46,9 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
       lastname: user.lastname
     };
 
-    return createResponse(200, userProfile);
+    return createResponse(200, userProfile, event.headers?.Origin);
   } catch (error) {
     console.error('Get user profile error:', error);
-    return createResponse(500, { error: 'Internal server error' } as ErrorResponse);
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.Origin);
   }
 };
