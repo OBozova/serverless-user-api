@@ -94,3 +94,10 @@ This project includes comprehensive TypeScript types for:
 - Error responses
 
 All handlers include proper error handling and input validation.
+
+## Testing Front End
+- first set .env inside frontend folder and inside it you should set VITE_API_BASE_URL and VITE_API_KEY
+- cd frontend
+- npm i
+- npm run dev(For testing locally)
+- for automatic deploy you should set FRONTEND_BUCKET_NAME, VITE_API_KEY, VITE_API_URL secrets from github and it will deploy into your S3 bucket

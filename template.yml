@@ -490,6 +490,31 @@ Resources:
         - Ref: BillingAlarmSNSTopic
       TreatMissingData: notBreaching
 
+  ##############################
+  # FRONTEND
+  ##############################
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      AccessControl: PublicRead
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint
