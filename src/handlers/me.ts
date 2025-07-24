@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { User, UserProfile, ErrorResponse } from '../types';
+import { createResponse } from '../utils/createResponse';
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -22,10 +23,7 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
     const { userId: id } = event.requestContext.authorizer;
 
     if (!id) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: 'Unauthorized' } as ErrorResponse),
-      };
+      return createResponse(401, { error: 'Unauthorized' } as ErrorResponse, event.headers?.origin);
     }
 
     const params = new GetCommand({
@@ -37,10 +35,7 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
     const user = result.Item as User | undefined;
 
     if (!user) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: 'User not found' } as ErrorResponse),
-      };
+      return createResponse(404, { error: 'User not found' } as ErrorResponse, event.headers?.origin);
     }
 
     // Return user profile without password
@@ -51,15 +46,9 @@ export const handler = async (event: AuthorizedEvent): Promise<APIGatewayProxyRe
       lastname: user.lastname
     };
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify(userProfile),
-    };
+    return createResponse(200, userProfile, event.headers?.origin);
   } catch (error) {
     console.error('Get user profile error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' } as ErrorResponse),
-    };
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.origin);
   }
 };

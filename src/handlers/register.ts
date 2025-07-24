@@ -4,6 +4,7 @@ import { DynamoDBDocumentClient, QueryCommand, PutCommand } from '@aws-sdk/lib-d
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { User, UserRegistration, UserProfile, ErrorResponse } from '../types';
+import { createResponse } from '../utils/createResponse';
 
 const client = new DynamoDBClient({});
 const dynamo = DynamoDBDocumentClient.from(client);
@@ -12,19 +13,13 @@ const table = process.env.DYNAMODB_TABLE!;
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     if (!event.body) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Request body is required' } as ErrorResponse),
-      };
+      return createResponse(400, { error: 'Request body is required' } as ErrorResponse, event.headers?.origin);
     }
 
     const { email, password, firstname, lastname }: UserRegistration = JSON.parse(event.body);
     
     if (!email || !password) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Email and password are required' } as ErrorResponse),
-      };
+      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse, event.headers?.origin);
     }
 
     const queryParams = new QueryCommand({
@@ -39,10 +34,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const result = await dynamo.send(queryParams);
     
     if (result.Items && result.Items.length > 0) {
-      return { 
-        statusCode: 409, 
-        body: JSON.stringify({ error: 'User already exists' } as ErrorResponse) 
-      };
+      return createResponse(409, { error: 'User already exists' } as ErrorResponse, event.headers?.origin);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -65,15 +57,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const userProfile: UserProfile = { id, email, firstname, lastname };
 
-    return {
-      statusCode: 201,
-      body: JSON.stringify(userProfile),
-    };
+    return createResponse(201, userProfile, event.headers?.origin);
   } catch (error) {
     console.error('Registration error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' } as ErrorResponse),
-    };
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.origin);
   }
 };

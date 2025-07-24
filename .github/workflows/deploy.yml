@@ -24,8 +24,13 @@ jobs:
         with:
           use-installer: true
 
+      # ─────────────────────────────────────────────────────────────
+      # 🧪 Backend: Install, Test, Build
+      # ─────────────────────────────────────────────────────────────
+
       - name: Install dependencies
-        run: cd src && npm install && cd ..
+        working-directory: src
+        run: npm install
 
       - name: Run tests
         run: npm install && npm test
@@ -34,7 +39,8 @@ jobs:
         run: npm install -g rimraf
 
       - name: Build TypeScript
-        run: cd src && npm run build && cd ..
+        working-directory: src
+        run: npm run build
 
       - name: Copying dependencies to dist
         run: |
@@ -59,3 +65,28 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      # ─────────────────────────────────────────────────────────────
+      # 🎨 Frontend: Build & Deploy to S3
+      # ─────────────────────────────────────────────────────────────
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Inject Vite env variables
+        working-directory: frontend
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" >> .env
+          echo "VITE_API_KEY=${{ secrets.VITE_API_KEY }}" >> .env
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload to S3
+        run: |
+          aws s3 sync frontend/dist s3://${{ secrets.FRONTEND_BUCKET_NAME }} --delete
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

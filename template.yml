@@ -17,6 +17,7 @@ Globals:
       Variables:
         DYNAMODB_TABLE: UsersTable
         JWT_SECRET: !Ref JwtSecret
+        S3_BUCKET: !Ref FrontendBucket
 
 Resources:
 
@@ -56,7 +57,7 @@ Resources:
     Type: AWS::ApiGateway::Stage
     Properties:
       StageName: Prod
-      DeploymentId: !Ref MyDeploymentV3
+      DeploymentId: !Ref MyDeploymentV4
       RestApiId: !Ref MyRestApi
       Description: version 1.0.0
 
@@ -88,7 +89,7 @@ Resources:
       PathPart: stats
       RestApiId: !Ref MyRestApi
 
-  MyDeploymentV3:
+  MyDeploymentV4:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
       - RegisterMethod
@@ -304,7 +305,7 @@ Resources:
           - StatusCode: 200
             ResponseParameters:
               method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,POST'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET'"
               method.response.header.Access-Control-Allow-Origin: "'*'"
         RequestTemplates:
           application/json: '{"statusCode": 200}'
@@ -353,8 +354,8 @@ Resources:
         IntegrationResponses:
           - StatusCode: 200
             ResponseParameters:
-              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
-              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,POST'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,x-api-key'"
+              method.response.header.Access-Control-Allow-Methods: "'OPTIONS,GET'"
               method.response.header.Access-Control-Allow-Origin: "'*'"
         RequestTemplates:
           application/json: '{"statusCode": 200}'
@@ -489,6 +490,35 @@ Resources:
       AlarmActions:
         - Ref: BillingAlarmSNSTopic
       TreatMissingData: notBreaching
+
+  ##############################
+  # FRONTEND
+  ##############################
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
 
 Outputs:
   ApiUrl:
