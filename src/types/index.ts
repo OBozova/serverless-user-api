@@ -4,6 +4,7 @@ export interface User {
   password: string;
   firstname?: string;
   lastname?: string;
+  isAdmin?: boolean;
 }
 
 export interface UserRegistration {

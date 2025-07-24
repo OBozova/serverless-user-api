@@ -41,7 +41,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         return createResponse(401, { error: 'Unauthorized' } as ErrorResponse);
       }
       
-      const token = jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' });
+      const token = jwt.sign({ sub: user.id, isAdmin: user.isAdmin }, secret, { expiresIn: '1h' });
 
       return createResponse(200,{ token } as LoginResponse);
     } else {
