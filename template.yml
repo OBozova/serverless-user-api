@@ -497,10 +497,14 @@ Resources:
   FrontendBucket:
     Type: AWS::S3::Bucket
     Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html
-      AccessControl: PublicRead
 
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy
