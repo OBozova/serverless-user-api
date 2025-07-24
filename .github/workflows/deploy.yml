@@ -30,7 +30,8 @@ jobs:
       # ─────────────────────────────────────────────────────────────
 
       - name: Install dependencies
-        run: cd src && npm install && cd ..
+        working-directory: src
+        run: npm install
 
       - name: Run tests
         run: npm install && npm test
@@ -39,7 +40,8 @@ jobs:
         run: npm install -g rimraf
 
       - name: Build TypeScript
-        run: cd src && npm run build && cd ..
+        working-directory: src
+        run: npm run build
 
       - name: Copying dependencies to dist
         run: |
@@ -71,11 +73,11 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: ls && cd frontend && npm ci && cd ..
+        run: npm ci
 
       - name: Build frontend
         working-directory: frontend
-        run: cd frontend && npm run build && cd ..
+        run: npm run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_OTHER_SECRET: ${{ secrets.VITE_OTHER_SECRET }}
