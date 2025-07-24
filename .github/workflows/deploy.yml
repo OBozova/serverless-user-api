@@ -71,7 +71,7 @@ jobs:
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: cd frontend && npm ci && cd ..
+        run: ls && cd frontend && npm ci && cd ..
 
       - name: Build frontend
         working-directory: frontend
