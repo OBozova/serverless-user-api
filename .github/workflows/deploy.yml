@@ -75,18 +75,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Set .env variables for frontend
-        working-directory: frontend
-        run: |
-          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" >> .env
-          echo "VITE_OTHER_SECRET=${{ secrets.VITE_OTHER_SECRET }}" >> .env
-
       - name: Build frontend
         working-directory: frontend
         run: npm run build
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
-          VITE_OTHER_SECRET: ${{ secrets.VITE_OTHER_SECRET }}
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
 
       - name: Upload to S3
         run: |

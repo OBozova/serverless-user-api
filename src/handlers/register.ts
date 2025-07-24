@@ -13,13 +13,13 @@ const table = process.env.DYNAMODB_TABLE!;
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     if (!event.body) {
-      return createResponse(400, { error: 'Request body is required' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(400, { error: 'Request body is required' } as ErrorResponse, event.headers?.origin);
     }
 
     const { email, password, firstname, lastname }: UserRegistration = JSON.parse(event.body);
     
     if (!email || !password) {
-      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse, event.headers?.origin);
     }
 
     const queryParams = new QueryCommand({
@@ -34,7 +34,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const result = await dynamo.send(queryParams);
     
     if (result.Items && result.Items.length > 0) {
-      return createResponse(409, { error: 'User already exists' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(409, { error: 'User already exists' } as ErrorResponse, event.headers?.origin);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -57,9 +57,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     const userProfile: UserProfile = { id, email, firstname, lastname };
 
-    return createResponse(201, userProfile, event.headers?.Origin);
+    return createResponse(201, userProfile, event.headers?.origin);
   } catch (error) {
     console.error('Registration error:', error);
-    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.Origin);
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.origin);
   }
 };

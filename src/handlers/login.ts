@@ -14,13 +14,13 @@ const secret = process.env.JWT_SECRET!;
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     if (!event.body) {
-      return createResponse(400, { error: 'Request body is required' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(400, { error: 'Request body is required' } as ErrorResponse, event.headers?.origin);
     }
 
     const { email, password }: UserLogin = JSON.parse(event.body);
 
     if (!email || !password) {
-      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(400, { error: 'Email and password are required' } as ErrorResponse, event.headers?.origin);
     }
 
     const params = new QueryCommand({
@@ -38,17 +38,17 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       const user = result.Items[0] as User;
       
       if (!user || !(await bcrypt.compare(password, user.password))) {
-        return createResponse(401, { error: 'Unauthorized' } as ErrorResponse, event.headers?.Origin);
+        return createResponse(401, { error: 'Unauthorized' } as ErrorResponse, event.headers?.origin);
       }
       
       const token = jwt.sign({ sub: user.id, isAdmin: user.isAdmin }, secret, { expiresIn: '1h' });
 
-      return createResponse(200,{ token } as LoginResponse, event.headers?.Origin);
+      return createResponse(200,{ token } as LoginResponse, event.headers?.origin);
     } else {
-      return createResponse(404,{ error: 'User Not Found' } as ErrorResponse, event.headers?.Origin);
+      return createResponse(404,{ error: 'User Not Found' } as ErrorResponse, event.headers?.origin);
     }
   } catch (error) {
     console.error('Login error:', error);
-    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.Origin);
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.origin);
   }
 };

@@ -20,9 +20,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       userCount: scan.Count || 0 
     };
 
-    return createResponse(200, statsResponse, event.headers?.Origin);
+    return createResponse(200, statsResponse, event.headers?.origin);
   } catch (error) {
     console.error('Stats error:', error);
-    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.Origin);
+    return createResponse(500, { error: 'Internal server error' } as ErrorResponse, event.headers?.origin);
   }
 };
